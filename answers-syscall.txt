@@ -1,0 +1,16 @@
+1. Looking at the backtrace output, which function called syscall?
+    usertrap();
+2. What is the value of p->trapframe->a7 and what does that value represent? (Hint: look user/initcode.S, the first user program xv6 starts.)
+    0x7, which is  the system call number. System call numbers match the entries in the syscalls array, a table of function pointers (kernel/syscall.c:107). 
+3. What was the previous mode that the CPU was in?
+    User mode. (riscv-privileged-20211203 P63 When a trap is taken, SPP is set to 0 if the trap originated from user mode, or 1 otherwise.)
+4. Write down the assembly instruction the kernel is panicing at. Which register corresponds to the variable num?
+    80002052: 00002683    lw a3,0(zero) # 0 <_entry-0x80000000>
+    $0 corresponds to the variable num.
+5. Why does the kernel crash? Hint: look at figure 3-3 in the text; is address 0 mapped in the kernel address space? Is that confirmed by the value in scause above? (See description of scause in RISC-V privileged instructions)
+    Because lw a3,0(zero) want to load value from 0x00000000 which is unused in riscv.
+    No, address 0 is unused.
+    Yes, value of scause show that the Exception is caused by Store/AMO address misaligned.
+6. What is the name of the binary that was running when the kernel paniced? What is its process id (pid)?
+    Initcode
+    The pid of initcode is 1.

@@ -295,6 +295,7 @@ fork(void)
     return -1;
   }
   np->sz = p->sz;
+  np->tracemask = p->tracemask;
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
@@ -685,4 +686,19 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+// initialize the proc table.
+int
+procnums(void)
+{
+  struct proc *p;
+  int pnums = 0;
+  for(p = proc; p < &proc[NPROC]; p++) {
+    if (p->state != UNUSED)
+    {
+      pnums++;
+    }
+  }
+  return pnums;
 }

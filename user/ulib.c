@@ -25,11 +25,35 @@ strcpy(char *s, const char *t)
   return os;
 }
 
+char*
+strncpy(char *s, const char *t, int n)
+{
+  char *os;
+
+  os = s;
+  for (int i = 0; i < n && *t!=0; i++)
+  {
+    *s++ = *t++;
+  }
+  *s=0;
+  return os;
+}
+
 int
 strcmp(const char *p, const char *q)
 {
   while(*p && *p == *q)
     p++, q++;
+  return (uchar)*p - (uchar)*q;
+}
+
+
+int
+strncmp(const char *p, const char *q, int n)
+{
+  int i = 0;
+  while(*p && *p == *q && i < n-1)
+    p++, q++, i++;
   return (uchar)*p - (uchar)*q;
 }
 
