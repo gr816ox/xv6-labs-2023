@@ -282,7 +282,6 @@ fork(void)
   int i, pid;
   struct proc *np;
   struct proc *p = myproc();
-
   // Allocate process.
   if((np = allocproc()) == 0){
     return -1;
@@ -312,6 +311,12 @@ fork(void)
 
   pid = np->pid;
 
+// #ifdef LAB_PGTBL
+//   struct usyscall uscall ={.pid = pid};
+//   // printf("pid:%d\n",uscall.pid);
+//   copyout(np->pagetable, USYSCALL, (char *)&uscall, sizeof(uscall));
+// #endif
+  
   release(&np->lock);
 
   acquire(&wait_lock);
