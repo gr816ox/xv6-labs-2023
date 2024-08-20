@@ -449,3 +449,14 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+// print the pagetable.
+void
+vmprint(pagetable_t pagetable)
+{
+  for (pagetable_t i = 0; i < count; i++)
+  {
+    /* code */
+  }
+  
+}

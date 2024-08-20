@@ -202,6 +202,18 @@ proc_pagetable(struct proc *p)
     return 0;
   }
 
+#ifdef LAB_PGTBL
+  char *pa = kalloc();
+  // map the usyscall page just below the trapframe page.
+  if(mappages(pagetable, USYSCALL, PGSIZE,
+              (uint64)pa, PTE_U | PTE_U | PTE_W) < 0){
+    uvmunmap(pagetable, TRAMPOLINE, 1, 0);
+    uvmunmap(pagetable, TRAPFRAME, 1, 0);
+    uvmfree(pagetable, 0);
+    return 0;
+  }
+#endif
+
   return pagetable;
 }
 
@@ -212,6 +224,9 @@ proc_freepagetable(pagetable_t pagetable, uint64 sz)
 {
   uvmunmap(pagetable, TRAMPOLINE, 1, 0);
   uvmunmap(pagetable, TRAPFRAME, 1, 0);
+#ifdef LAB_PGTBL
+  uvmunmap(pagetable, USYSCALL, 1, 0);
+#endif
   uvmfree(pagetable, sz);
 }
 
@@ -311,11 +326,11 @@ fork(void)
 
   pid = np->pid;
 
-// #ifdef LAB_PGTBL
-//   struct usyscall uscall ={.pid = pid};
-//   // printf("pid:%d\n",uscall.pid);
-//   copyout(np->pagetable, USYSCALL, (char *)&uscall, sizeof(uscall));
-// #endif
+#ifdef LAB_PGTBL
+  struct usyscall uscall = {.pid = pid};
+  if(copyout(np->pagetable, USYSCALL, (char *)&uscall, sizeof(uscall)) < 0)
+    printf("err copyout\n");
+#endif
   
   release(&np->lock);
 
