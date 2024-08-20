@@ -206,7 +206,7 @@ proc_pagetable(struct proc *p)
   char *pa = kalloc();
   // map the usyscall page just below the trapframe page.
   if(mappages(pagetable, USYSCALL, PGSIZE,
-              (uint64)pa, PTE_U | PTE_U | PTE_W) < 0){
+              (uint64)pa, PTE_R | PTE_U | PTE_W) < 0){
     uvmunmap(pagetable, TRAMPOLINE, 1, 0);
     uvmunmap(pagetable, TRAPFRAME, 1, 0);
     uvmfree(pagetable, 0);
@@ -330,6 +330,8 @@ fork(void)
   struct usyscall uscall = {.pid = pid};
   if(copyout(np->pagetable, USYSCALL, (char *)&uscall, sizeof(uscall)) < 0)
     printf("err copyout\n");
+  pte_t *pte = walk(np->pagetable, USYSCALL, 0);
+  *pte &= ~PTE_W;
 #endif
   
   release(&np->lock);
