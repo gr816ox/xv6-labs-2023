@@ -75,6 +75,28 @@ int
 sys_pgaccess(void)
 {
   // lab pgtbl: your code here.
+  uint64 buf;
+  int nums;
+  int abits;
+  pte_t *pte;
+  uint32 bitsbuf = 0;
+
+  argaddr(0, &buf);
+  argint(1, &nums);
+  argint(2, &abits);
+  struct proc *p = myproc();
+  for (int i = 0; i < nums; i++)
+  {
+    pte = walk(p->pagetable,buf + PGSIZE * i, 0);
+    if (*pte & PTE_A)
+    {
+      bitsbuf = bitsbuf | (1 << i);
+      *pte &= ~PTE_A;
+    }
+  }
+  // printf("bitsbuf: %x\n", bitsbuf);
+  // vmprint(p->pagetable);
+  copyout(p->pagetable, abits, (char *)&bitsbuf, 32);
   return 0;
 }
 #endif

@@ -1,0 +1,10 @@
+Q:  Which other xv6 system call(s) could be made faster using this shared page? Explain how.
+A:  sysinfo
+    fstat
+
+Q:  For every leaf page in the vmprint output, explain what it logically contains and what its permission bits are. 
+    Figure 3.4 in the xv6 book might be helpful, although note that the figure might have a slightly different set 
+    of pages than the init process that's being inspected here.
+A:  A number which represent the number of entry in page table of this level,
+    pte which represent the phyiscal address of entry of this page table.
+    pa which represent the first phyiscal address of this page table.
