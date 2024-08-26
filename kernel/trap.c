@@ -77,8 +77,27 @@ usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  if(which_dev == 2){
+    if (p->alarm_interval > 0 && p->alarm_handler_returned)
+    {
+      if (p->alarm_ticks_left == 0)
+      {
+        p->alarm_handler_returned = 0;
+        // intr_off();
+        p->alarm_trapframe = (struct trapframe *)kalloc();
+        memmove(p->alarm_trapframe, p->trapframe, sizeof(struct trapframe));
+        // p->alarm_trapframe->epc += 4; // Comment out this line will pass test1; because this is a device interrupt, so we want it to be restore to the original pc rather than pc + 4;
+        p->alarm_kstack = p->kstack;
+        p->trapframe->epc = (uint64)(p->alarm_handler);
+        p->alarm_ticks_left = p->alarm_interval;
+      }
+      else if (p->alarm_ticks_left > 0)
+      {
+        p->alarm_ticks_left--;
+      }
+    }
     yield();
+  }
 
   usertrapret();
 }
