@@ -1,0 +1,8 @@
+Q:  thread_switch needs to save/restore only the callee-save registers. Why?
+A:  Because caller-save registers have been saved by caller in caller's stack. They will be recovered after return by caller.
+
+Q:  This sets a breakpoint at line 60 of uthread.c. The breakpoint may (or may not) be triggered before you even run uthread. How could that happen?
+A:  
+
+Q:  Why are there missing keys with 2 threads, but not with 1 thread? Identify a sequence of events with 2 threads that can lead to a key being missing. Submit your sequence with a short explanation in answers-thread.txt.
+A:  Suppose thread1(key1 = 3) and thread2(key2 = 50003), if they both run on "e->next = n;"(static void insert(int key, int value, struct entry **p, struct entry *n)), one of them will be missing.
