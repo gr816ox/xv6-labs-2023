@@ -80,6 +80,7 @@ int             pipewrite(struct pipe*, uint64, int);
 void            printf(char*, ...);
 void            panic(char*) __attribute__((noreturn));
 void            printfinit(void);
+void            backtrace(void);
 
 // proc.c
 int             cpuid(void);
@@ -187,3 +188,10 @@ void            virtio_disk_intr(void);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
+
+// pagefault.c
+void            storepagefault(uint64);
+int             update_pagerefcount(uint64, int);
+void            set_pagerefcount(uint64, int);
+void            print_pagerefcount();
+void            countfreepages();

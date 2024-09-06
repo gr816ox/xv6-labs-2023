@@ -63,8 +63,16 @@ usertrap(void)
     // an interrupt will change sepc, scause, and sstatus,
     // so enable only now that we're done with those registers.
     intr_on();
-
     syscall();
+  } else if (r_scause() == 15){
+    // Store/AMO page fault
+
+    if(killed(p))
+      exit(-1);
+
+    uint64 fault_vaddr = r_stval();
+    intr_on();
+    storepagefault(fault_vaddr);
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {
@@ -219,3 +227,52 @@ devintr()
   }
 }
 
+
+
+
+
+void 
+storepagefault(uint64 fault_vaddr)
+{
+  pte_t *pte;
+  uint64 pa;
+  uint flags;
+  char *mem;
+
+  uint64 sepc = r_sepc();
+  struct proc *p = myproc();
+
+  if (fault_vaddr >= MAXVA){
+    setkilled(p);
+    return;
+  }
+  
+  if((pte = walk(p->pagetable, fault_vaddr, 0)) == 0)
+    panic("uvmcopy: pte should exist");
+  if((*pte & PTE_V) == 0)
+    panic("uvmcopy: page not present");
+  pa = PTE2PA(*pte);
+  flags = PTE_FLAGS(*pte);
+
+  if ((flags & PTE_COW) == 0 || (flags & PTE_U) == 0 ){
+    printf("fault_vaddr:%p, page: %p, pte: %p, sepc: %p\n",fault_vaddr, fault_vaddr & ~0xFFF, *pte, sepc);
+    printf("pid: %d flags & PTE_COW): %d, flags & PTE_W): %d, (flags & PTE_U): %d",myproc()->pid, flags & PTE_COW, flags & PTE_W, flags & PTE_U);
+    setkilled(p);
+    // panic("storepagefault(): Try to write a readonly vaddress");
+    return;
+  }
+  if((mem = kalloc()) == 0){
+    backtrace();
+    setkilled(p);
+    return;
+  }
+    // panic("storepagefault(): (mem = kalloc()) == 0");
+  memmove(mem, (char*)pa, PGSIZE);
+  // printf("fault_vaddr:%p, page: %p\n",fault_vaddr, fault_vaddr & ~0xFFF);
+  if(mappages(p->pagetable, fault_vaddr & ~0xFFF, PGSIZE, (uint64)mem, flags | PTE_W) != 0){
+    kfree(mem);
+    panic("storepagefault(): mappages failed");
+  }
+
+  kfree((char *)pa);
+}

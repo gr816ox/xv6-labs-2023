@@ -111,6 +111,16 @@ allocproc(void)
 {
   struct proc *p;
 
+  // static char *states[] = {
+  //   [UNUSED]    "unused",
+  //   [USED]      "used",
+  //   [SLEEPING]  "sleep ",
+  //   [RUNNABLE]  "runble",
+  //   [RUNNING]   "run   ",
+  //   [ZOMBIE]    "zombie"
+  // };
+
+
   for(p = proc; p < &proc[NPROC]; p++) {
     acquire(&p->lock);
     if(p->state == UNUSED) {
@@ -119,6 +129,14 @@ allocproc(void)
       release(&p->lock);
     }
   }
+  // int i = 0;
+  // for(p = proc,i = 0; p < &proc[NPROC]; p++,i++) {
+  //   acquire(&p->lock);
+    // if (p->state == RUNNING)
+  //     printf("[%d]pid: %d, p->state == %s\n",i, p->pid, states[p->state]);
+  //   release(&p->lock);
+  // }
+  // panic("allocproc(): no proc available");
   return 0;
 
 found:
@@ -127,6 +145,7 @@ found:
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
+    panic("allocproc(): (p->trapframe = (struct trapframe *)kalloc()) == 0");
     freeproc(p);
     release(&p->lock);
     return 0;
@@ -135,6 +154,7 @@ found:
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
   if(p->pagetable == 0){
+    panic("allocproc(): p->pagetable == 0");
     freeproc(p);
     release(&p->lock);
     return 0;
@@ -283,8 +303,12 @@ fork(void)
   struct proc *np;
   struct proc *p = myproc();
 
+  // printf("\nfork: %d ", p->pid);
+  // countfreepages();
+
   // Allocate process.
   if((np = allocproc()) == 0){
+    // panic("fork(): allocproc failed");
     return -1;
   }
 
@@ -292,6 +316,7 @@ fork(void)
   if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
     freeproc(np);
     release(&np->lock);
+    panic("fork(): uvmcopy failed");
     return -1;
   }
   np->sz = p->sz;
@@ -321,7 +346,10 @@ fork(void)
   acquire(&np->lock);
   np->state = RUNNABLE;
   release(&np->lock);
-
+  
+  // printf("fork done.");
+  // countfreepages();
+  
   return pid;
 }
 
@@ -412,6 +440,7 @@ wait(uint64 addr)
                                   sizeof(pp->xstate)) < 0) {
             release(&pp->lock);
             release(&wait_lock);
+            panic("wait(): copyout failed");
             return -1;
           }
           freeproc(pp);
