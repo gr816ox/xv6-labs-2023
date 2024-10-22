@@ -13,6 +13,8 @@
         "random": "c",
         "limits": "c",
         "semaphore": "c",
-        "algorithm": "c"
+        "algorithm": "c",
+        "spinlock.h": "c",
+        "param.h": "c"
     }
 }

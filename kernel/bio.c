@@ -41,7 +41,7 @@ void
 binit(void)
 {
   struct buf *b;
-  printf("start binit\n");
+  // printf("start binit\n");
   initlock(&bcache.lock, "bcache");
   int bucketsize = NBUF / NBUCKET;
   int restsize = NBUF % NBUCKET;
@@ -49,7 +49,7 @@ binit(void)
   for (int i = 0; i < NBUCKET; i++){
     snprintf(bucketname[i], sizeof(bucketname[i]), "bcachebucket%d", i);
     initlock(&bcache.bucket_lock[i], bucketname[i]);
-    printf("init bucket_lock[%d]\n",i);
+    // printf("init bucket_lock[%d]\n",i);
 
     b = &bcache.bucket_head[i];
     for (int j = 0; j < bucketsize && (j + bucketsize * i < NBUF); j++){
@@ -76,7 +76,7 @@ bget(uint dev, uint blockno)
   struct buf *p;
   int bucketidx = blockno % NBUCKET;
 
-  acquire(&bcache.lock);
+  // acquire(&bcache.lock);
   acquire(&bcache.bucket_lock[bucketidx]);
 
   // Is the block already cached?
@@ -84,7 +84,7 @@ bget(uint dev, uint blockno)
     if(b->dev == dev && b->blockno == blockno){
       b->refcnt++;
       release(&bcache.bucket_lock[bucketidx]);
-      release(&bcache.lock);
+      // release(&bcache.lock);
       acquiresleep(&b->lock);
       return b;
     }
@@ -98,12 +98,12 @@ bget(uint dev, uint blockno)
       b->valid = 0;
       b->refcnt = 1;
       release(&bcache.bucket_lock[bucketidx]);
-      release(&bcache.lock);
+      // release(&bcache.lock);
       acquiresleep(&b->lock);
       return b;
     }
   }
-  release(&bcache.bucket_lock[bucketidx]);
+  // release(&bcache.bucket_lock[bucketidx]);
 
   // Not cached.
   // Recycle the least recently used (LRU) unused buffer.
@@ -112,11 +112,13 @@ bget(uint dev, uint blockno)
     if (i == bucketidx)
       continue;
     acquire(&bcache.bucket_lock[i]);
-    for (b = &bcache.bucket_head[i]; b->next != 0; b = b->next){
+    for (b = bcache.bucket_head[i].next; b->next != 0; b = b->next){
       if(b->next->refcnt == 0) {
-        acquire(&bcache.bucket_lock[bucketidx]);
-        printf("asdfasdfasdfsadf\n");
-        for (p = bcache.bucket_head[bucketidx].next; p->next != 0; p = p->next)
+        // acquire(&bcache.bucket_lock[bucketidx]);
+        // printf("asdfasdfasdfsadf\n");
+        for (p = bcache.bucket_head[bucketidx].next; p->next != 0; p = p->next){
+          // printf("p");
+        }
           ;
         p->next = b->next;
         b->next = b->next->next;
@@ -128,7 +130,7 @@ bget(uint dev, uint blockno)
         b->refcnt = 1;
         release(&bcache.bucket_lock[bucketidx]);
         release(&bcache.bucket_lock[i]);
-        release(&bcache.lock);
+        // release(&bcache.lock);
         acquiresleep(&b->lock);
         return b;
       }
