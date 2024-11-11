@@ -15,6 +15,7 @@
 #include "sleeplock.h"
 #include "file.h"
 #include "fcntl.h"
+#include "memlayout.h"
 
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
@@ -501,5 +502,87 @@ sys_pipe(void)
     fileclose(wf);
     return -1;
   }
+  return 0;
+}
+
+
+uint64
+sys_map(void)
+{
+  int i;
+  uint64 addr;
+  int length;
+  int prot;
+  int flags;
+  int fd;
+  int offset;
+  struct proc *p = myproc();
+
+  // argaddr(0, &addr);
+  argint(1, &length);
+  argint(2, &prot);
+  argint(3, &flags);
+  argint(4, &fd);
+  argint(5, &offset);
+
+  for (i = 0; i < 16; i++)
+    if (p->vmastt[i].valid == 0)
+      break;
+  if (i == 16)
+    panic("sys_map: out of vma");
+  
+  addr = VMABASE + i*16*1024*1024;
+  if (p->ofile[fd]->writable == 0 && flags == MAP_SHARED && (prot & PROT_WRITE))
+  {
+    return -1;
+  }
+  
+  p->vmastt[i].address = (char *)addr;
+  p->vmastt[i].length = length;
+  p->vmastt[i].permissions = prot;
+  p->vmastt[i].mpfile = p->ofile[fd];
+  p->vmastt[i].offset = offset;
+  p->vmastt[i].flags = flags;
+  filedup(p->vmastt[i].mpfile);
+
+  p->vmastt[i].valid = 1;
+  return addr;
+}
+
+uint64
+sys_munmap(void)
+{
+  uint64 addr;
+  int length;
+  argaddr(0, &addr);
+  argint(1, &length);
+  int idx = (addr-VMABASE) / (16*1024*1024);
+  struct proc *p = myproc();
+
+  if (walkaddr(p->pagetable, addr) == 0)
+    return 0;  
+
+  // printf("page addr:%p, %p\n", (char *)addr, (char *)(PGROUNDDOWN(addr)));
+  // struct file * tmpf = p->vmastt[idx].mpfile;
+  if (p->vmastt[idx].flags == MAP_SHARED){
+    begin_op();
+    ilock(p->vmastt[idx].mpfile->ip);
+    writei(p->vmastt[idx].mpfile->ip, 1, addr, p->vmastt[idx].offset, length);
+    iunlock(p->vmastt[idx].mpfile->ip);
+    end_op();
+  }
+  
+
+  uvmunmap(p->pagetable, PGROUNDDOWN(addr), length / PGSIZE, 1);
+  int rest = 0;
+  for (int i = 0; i < p->vmastt[idx].length; i++){
+    rest += walkaddr(p->pagetable, (uint64)p->vmastt[idx].address+i*PGSIZE);
+  }
+  if (rest==0){
+    p->vmastt[idx].valid = 0;
+    fileclose(p->vmastt[idx].mpfile);
+    p->vmastt[idx].mpfile = 0;
+  }
+  
   return 0;
 }

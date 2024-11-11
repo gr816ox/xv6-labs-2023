@@ -5,6 +5,9 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "sleeplock.h"
+#include "fs.h"
+#include "file.h"
 
 struct spinlock tickslock;
 uint ticks;
@@ -65,6 +68,33 @@ usertrap(void)
     intr_on();
 
     syscall();
+  } else if(r_scause() == 0xd){
+    uint64 stval = r_stval();
+    struct proc *p = myproc();
+    intr_on();
+
+    if (stval >= VMABASE && stval < VMASTOP){
+      // printf("11111\n");
+      int idx = (stval - VMABASE) / (16*1024*1024);
+      if (p->vmastt[idx].valid == 0){
+        printf("pid: %d, vmaaddr: %p, idx:%d\n",p->pid, (char *)stval, idx);
+        panic("usertrap():p->vmastt[idx].valid");
+      }
+      // printf("%d %p\n",idx, p->vmastt[idx].mpfile);
+      uint64 pa = (uint64)kalloc();
+      mappages(p->pagetable, PGROUNDDOWN(stval), PGSIZE, pa, PTE_R|PTE_W|PTE_U);
+      uint64 rdoffset = p->vmastt[idx].offset + (PGROUNDDOWN(stval)-idx*16*1024*1024-VMABASE);
+      ilock(p->vmastt[idx].mpfile->ip);
+      int tot = readi(p->vmastt[idx].mpfile->ip, 1, PGROUNDDOWN(stval), rdoffset, PGSIZE);
+      // printf("idx: %d, tot: %d\n", idx, tot);
+      if (tot < PGSIZE)
+        memset((void*)(pa + tot), 0, PGSIZE - tot);
+      iunlock(p->vmastt[idx].mpfile->ip);
+    } else {
+      printf("usertrap(): page fault addr=%p pid=%d\n", (char *)stval, p->pid);
+      printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+      setkilled(p);
+    }
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {

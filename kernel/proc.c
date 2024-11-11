@@ -5,6 +5,9 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "sleeplock.h"
+#include "fs.h"
+#include "file.h"
 
 struct cpu cpus[NCPU];
 
@@ -145,6 +148,9 @@ found:
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
+
+  for (int i = 0; i < 16; i++)
+    p->vmastt[i].valid = 0;  
 
   return p;
 }
@@ -308,6 +314,13 @@ fork(void)
       np->ofile[i] = filedup(p->ofile[i]);
   np->cwd = idup(p->cwd);
 
+  for (int i = 0; i < 16; i++){
+    np->vmastt[i] = p->vmastt[i];
+    if (np->vmastt[i].valid){
+      filedup(np->vmastt[i].mpfile);
+    }
+  }
+
   safestrcpy(np->name, p->name, sizeof(p->name));
 
   pid = np->pid;
@@ -357,6 +370,15 @@ exit(int status)
       struct file *f = p->ofile[fd];
       fileclose(f);
       p->ofile[fd] = 0;
+    }
+  }
+
+  for (int i = 0; i < 16; i++){
+    if (p->vmastt[i].valid){
+      for (int j = 0; j < p->vmastt[i].length /PGSIZE; j++){
+        if (walkaddr(p->pagetable, (uint64)p->vmastt[i].address + j * PGSIZE))
+          uvmunmap(p->pagetable, (uint64)p->vmastt[i].address + j * PGSIZE, 1, 1);
+      }
     }
   }
 
